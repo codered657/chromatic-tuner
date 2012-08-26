@@ -1,0 +1,18 @@
+Code Outline
+
+When input goes low to high
+start timer
+When input goes low to high again, stop timer
+note frequency = clock rate/count of timer
+
+repeat multiple times, average
+
+find note
+
+display note
+
+
+
+other features:
+change key (of instrument)
+calculate how sharp or flater6
