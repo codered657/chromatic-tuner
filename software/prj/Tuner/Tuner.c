@@ -43,29 +43,12 @@ uint8_t noteGenStrs[13][8] = {"C   ", "B   ", "A#/Bb", "A   ", "G#/Ab", "G   ", 
 //uint16_t noteCCAs[13] = {238, 225, 212, 200, 189, 178, 168, 158, 150, 141, 133, 126, 118};
 uint16_t noteCCAs[13] = {119, 113, 106, 100, 95, 89, 84, 79, 75, 71, 67, 63, 59};
 uint8_t keyOffsets[4] = {0, 5, 10, 3};
+uint8_t keyStrs[4][8] = {"C   ", "F   ", "Bb  ", "Eb  "};
 
 ISR(ACA_AC0_vect) {
 
-/*
-      
-    // Toggle the pin on an interrupt
-    if (freqPin == 1) {
-        
-        SetPort(0x0700, 0x00);
-        freqPin = 0;
-        
-    } else {
-      
-        SetPort(0x0700, 0xFF);
-        freqPin = 1;  
-    }
-    
-    */
-    
-    
+    // Sample the frequency on input
     SampleFreq(&freqMeter);
-
-    
     
 }
 
@@ -102,6 +85,7 @@ int main(void)
     uint16_t test16;
     
     uint8_t *test;
+    uint8_t *currentKeyPtr;
     
     uint8_t currentPress;
     uint8_t currentMode;
@@ -120,6 +104,7 @@ int main(void)
     uint16_t sampleCount;
     uint16_t samplePrescale;
     
+    // use the 32 MHz oscillator
     OSCCTRL = 0x50;
     *OSCCTRL = 0x07;
     
@@ -138,8 +123,6 @@ int main(void)
     
     displayUSART = USART_PORTF_1;
     displayPort = IO_PORTF;
-    
-    // Initialization code
     
     // Initialize character display
     InitCharDisplay(&display, displayUSART, displayPort);
@@ -182,23 +165,14 @@ int main(void)
     // Enable interrupts
     sei();
     
-    // Write test character to display
-    //ClearDisplay(&display);
-    //SetCursorPosition(&display, 0, 0);
-    //DisplayWriteChar(&display, "A");
-    
-    //_delay_ms(1000);
     TxUSARTByte(displayUSART, 0x12);
     
     _delay_ms(1000);
     TxUSARTByte(displayUSART, 124);
     TxUSARTByte(displayUSART, 157);
     
-    //TxUSARTByte(displayUSART, 254);
-    //TxUSARTByte(displayUSART, 0x01);
-    //BoxCursorOn(&display);
     UnderlineCursorOn(&display);
-    //CursorRight(&display);
+
     TxUSARTByte(displayUSART, 254);
     TxUSARTByte(displayUSART, 129);
     
@@ -214,11 +188,6 @@ int main(void)
     DisplayKey(testStr);
     DisplayCentsOffset(20);
     DisplayNeedle(20);
-    //DisplayWriteStrToPosition(&display, testStr, 32, 0, 0);
-    //DisplayWriteCharToPosition(&display, 'F', 1, 6);
-    //TxUSARTByte(displayUSART, 254);
-    //TxUSARTByte(displayUSART, 0x85);
-    //DisplayWriteChar(&display, 'F');
     
     sampleCount = 0;
     samplePrescale = 0;
@@ -227,10 +196,10 @@ int main(void)
     while(1)
     {
         
-        //TODO:: Please write your application code
+        
         if (KeyAvailable(&keypad)) {
             
-            // If there is a key, just output it on the LEDs
+            // If there is a key, process it
             currentPress = GetKey(&keypad);
             
             SetPort(0x0700, currentPress);
@@ -240,6 +209,9 @@ int main(void)
                 case 0xFB:
                     // Update the current key index
                     currentKey = (currentKey + 1) % TUNER_NUM_KEYS;
+                    currentKeyPtr = keyStrs + currentKey;
+                    DisplayKey(currentKeyPtr);
+                            
                     break;
                     
                 case 0xF7:
@@ -248,7 +220,7 @@ int main(void)
                         // Change mode to note/freq generation mode
                         currentMode = TUNER_NOTE_GEN_MODE;
                         
-                        // TODO: Enable frequency generation with to correct note
+                        // Enable frequency generation with to correct note
                         FreqGenMode(freqGenTimer, freqGenOutputPort, TIMER_PRESCALE_256, noteCCAs[currentNote]);
                         
                         currentNote++;
@@ -266,7 +238,7 @@ int main(void)
                         
                     } else {
                         
-                        // TODO: Update with correct note
+                        // Update with correct note
                         FreqGenMode(freqGenTimer, freqGenOutputPort, TIMER_PRESCALE_256, noteCCAs[currentNote]);
                         
                         // Go to next note
@@ -291,23 +263,20 @@ int main(void)
         }
         
         if (sampleCount == 50000) {
-        //SampleFreq(&freqMeter);
-        //_delay_ms(10000000);
-        testCount = (uint8_t) ((freqMeter.period) & 0xFF);
-        test16 = (uint16_t)GetFrequency(&freqMeter);
-        //SetPort(0x0700, (uint8_t) (test16 & 0xFF));
-        //SetPort(0x0700, testCount);
+
+            testCount = (uint8_t) ((freqMeter.period) & 0xFF);
+            test16 = (uint16_t)GetFrequency(&freqMeter);
         
-        freq = GetFrequency(&freqMeter);
-        closestFreq = ClosestFreq(freq);
-        closestNote = FreqToNote(freq, keyOffsets[currentKey]);
-        centsOff = CentsOff(IndexToFreq(closestFreq), freq);
+            freq = GetFrequency(&freqMeter);
+            closestFreq = ClosestFreq(freq);
+            closestNote = FreqToNote(freq, keyOffsets[currentKey]);
+            centsOff = CentsOff(IndexToFreq(closestFreq), freq);
         
-        DisplayNote(closestNote);
-        DisplayCentsOffset((uint8_t)centsOff);
-        DisplayNeedle((uint8_t)centsOff);
+            DisplayNote(closestNote);
+            DisplayCentsOffset((uint8_t)centsOff);
+            DisplayNeedle((uint8_t)centsOff);
         
-        sampleCount = 0;
+            sampleCount = 0;
         }        
         
     }
